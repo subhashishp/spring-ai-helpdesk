@@ -2,10 +2,9 @@ package com.subhashish.helpdesk.controller;
 
 import com.subhashish.helpdesk.service.AiService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 
 @RestController
@@ -19,7 +18,12 @@ public class AiController {
     }
 
     @PostMapping
-    public ResponseEntity<String> getResponse(@RequestBody String query){
-        return ResponseEntity.ok(aiService.getResponseFromAssistant(query));
+    public ResponseEntity<String> getResponse(@RequestBody String query, @RequestHeader("ConversationId") String conversationid){
+        return ResponseEntity.ok(aiService.getResponseFromAssistant(query, conversationid));
+    }
+
+    @PostMapping("/stream")
+    public ResponseEntity<Flux<String>> getStreamResponse(@RequestBody String query, @RequestHeader("ConversationId") String conversationid){
+        return ResponseEntity.ok(this.aiService.getResponseFromAssistantStream(query, conversationid));
     }
 }

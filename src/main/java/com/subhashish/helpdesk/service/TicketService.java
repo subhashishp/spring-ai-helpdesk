@@ -49,4 +49,10 @@ public class TicketService {
         return ticketRepository.save(ticket);
     }
 
+    public String findUsernameForEmail(String email) {
+        LOGGER.info("Finding for username having email id {}", email);
+
+        return ticketRepository.findUsernameByEmail(email).orElse(null);
+    }
+
 }
