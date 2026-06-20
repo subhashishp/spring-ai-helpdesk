@@ -46,10 +46,11 @@ public class TicketService {
     }
 
     public Ticket updateTicket(Ticket ticket) {
+        LOGGER.info("Updating the current ticket having ticket id {}", ticket.getId());
         return ticketRepository.save(ticket);
     }
 
-    public String findUsernameForEmail(String email) {
+    public String findUsernameFromEmail(String email) {
         LOGGER.info("Finding for username having email id {}", email);
 
         return ticketRepository.findUsernameByEmail(email).orElse(null);

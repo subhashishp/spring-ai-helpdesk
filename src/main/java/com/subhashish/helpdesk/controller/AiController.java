@@ -17,12 +17,12 @@ public class AiController {
         this.aiService = aiService;
     }
 
-    @PostMapping
+    @PostMapping("/block/chat")
     public ResponseEntity<String> getResponse(@RequestBody String query, @RequestHeader("ConversationId") String conversationid){
         return ResponseEntity.ok(aiService.getResponseFromAssistant(query, conversationid));
     }
 
-    @PostMapping("/stream")
+    @PostMapping("/stream/chat")
     public ResponseEntity<Flux<String>> getStreamResponse(@RequestBody String query, @RequestHeader("ConversationId") String conversationid){
         return ResponseEntity.ok(this.aiService.getResponseFromAssistantStream(query, conversationid));
     }

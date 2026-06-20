@@ -58,6 +58,23 @@ public class TicketDatabaseTool {
         if (ticket.getPriority() == null) {
             throw new IllegalArgumentException("Priority is required to create a ticket.");
         }
+        if (ticket.getDescription() == null || ticket.getDescription().isBlank()) {
+            throw new IllegalArgumentException("Missing required field: description. Ask the user for more detail, then retry.");
+        }
+        // Resolve username automatically if not provided
+        if (ticket.getUsername() == null || ticket.getUsername().isBlank()) {
+            String username = ticketService.findUsernameFromEmail(ticket.getEmail());
+            if (username != null) {
+                LOGGER.info("Resolved username '{}' from existing ticket for email {}",username , ticket.getEmail());
+                ticket.setUsername(username);
+            } else {
+                throw new IllegalArgumentException(
+                        "Missing required field: username. No existing user found for this email. " +
+                                "Suggest 2-3 usernames based on the email's local part (e.g. for 'paul2@gmail.com' suggest 'paul2', 'paul2_subh', 'paul2tech') " +
+                                "and ask the user to confirm or provide their own, then retry."
+                );
+            }
+        }
 
         try {
             Ticket created = ticketService.createTicket(ticket);
