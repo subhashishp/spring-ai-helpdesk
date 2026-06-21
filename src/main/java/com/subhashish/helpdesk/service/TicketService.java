@@ -1,12 +1,16 @@
 package com.subhashish.helpdesk.service;
 
 
+import com.subhashish.helpdesk.dto.UserTicketsDTO;
 import com.subhashish.helpdesk.entity.Ticket;
 import com.subhashish.helpdesk.repository.TicketRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
+import java.util.Collections;
+import java.util.List;
 
 @Service
 public class TicketService {
@@ -54,6 +58,14 @@ public class TicketService {
         LOGGER.info("Finding for username having email id {}", email);
 
         return ticketRepository.findUsernameByEmail(email).orElse(null);
+    }
+
+    public List<UserTicketsDTO> findAllOpenTicketsOfUser(String identifier) {
+        String searchOn = "email";
+        if(identifier.trim().contains("@"))
+            return ticketRepository.findSummaryAndDescriptionByEmail(identifier);
+        else
+            return ticketRepository.findSummaryAndDescriptionByUsername(identifier);
     }
 
 }

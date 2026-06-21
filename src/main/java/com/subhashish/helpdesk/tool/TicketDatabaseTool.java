@@ -47,7 +47,7 @@ public class TicketDatabaseTool {
                     "or updatedOn — these are handled by the system.")
             Ticket ticket) {
 
-        LOGGER.info("Tool invoked: createTicketTool with payload: {}", ticket);
+        LOGGER.info("Tool invoked: createTicketTool with for user : {}", ticket.getEmail());
 
         if (ticket.getEmail() == null || ticket.getEmail().isBlank()) {
             throw new IllegalArgumentException("Email is required to create a ticket.");
