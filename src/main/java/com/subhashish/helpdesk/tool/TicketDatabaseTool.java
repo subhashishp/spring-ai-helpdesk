@@ -86,13 +86,27 @@ public class TicketDatabaseTool {
         }
     }
 
-    @Tool(description = "This tool helps to get ticket of the user using the provided username.")
-    public Ticket getTicketByUserNameTool(@ToolParam(description = "Username of the ticket owner") String username) {
+    // On the username tool
+    @Tool(description = """
+    ALWAYS call this tool to fetch ticket details when the user provides or mentions their username. \
+    Triggered by phrases like 'my ticket', 'check my ticket', 'ticket status', 'show my issue' \
+    when a username is available. Never answer ticket details from memory. \
+    Call this before responding to any ticket lookup request involving a username.
+    """)
+    public Ticket getTicketByUserNameTool(@ToolParam(description = "The exact username of the ticket owner, " +
+            "e.g. 'john_doe' or 'subhashish123'. Ask the user if not provided.") String username) {
         return ticketService.getTicketByUserName(username);
     }
 
-    @Tool(description = "This tool helps to get ticket of the user using the provided emailId.")
-    public Ticket getTicketByEmailTool(@ToolParam(description = "Email id of the ticket owner") String email) {
+    // On the email tool
+    @Tool(description = """
+    ALWAYS call this tool to fetch ticket details when the user provides or mentions their email address. \
+    Triggered by phrases like 'my ticket', 'check my ticket', 'ticket status', 'show my issue' \
+    when an email is available. Never answer ticket details from memory. \
+    Call this before responding to any ticket lookup request involving an email.
+    """)
+    public Ticket getTicketByEmailTool(@ToolParam(description = "The exact emailId of the ticket owner, " +
+            "e.g. 'john@outlook.com' or 'subh@gmail.com'. Ask the user if not provided.") String email) {
         return ticketService.getTicketByEmail(email);
     }
 

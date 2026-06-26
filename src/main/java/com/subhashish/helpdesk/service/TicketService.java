@@ -2,6 +2,7 @@ package com.subhashish.helpdesk.service;
 
 
 import com.subhashish.helpdesk.dto.UserTicketsDTO;
+import com.subhashish.helpdesk.entity.Status;
 import com.subhashish.helpdesk.entity.Ticket;
 import com.subhashish.helpdesk.repository.TicketRepository;
 import jakarta.transaction.Transactional;
@@ -28,6 +29,7 @@ public class TicketService {
         LOGGER.info("Creating a ticket for user {}", ticket.getUsername());
 
         ticket.setId(null);
+        ticket.setStatus(Status.OPEN);
         return ticketRepository.save(ticket);
     }
 
