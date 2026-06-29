@@ -14,7 +14,7 @@ import java.util.Optional;
 public interface TicketRepository extends JpaRepository<Ticket,Long> {
 
     Optional<Ticket> findByUsername(String username);
-    Optional<Ticket> findByEmail(String username);
+    List<Ticket> findByEmail(String username);
 
     @Query("SELECT t.username FROM Ticket t WHERE t.email = :email")
     Optional<String> findUsernameByEmail(String email);
@@ -29,5 +29,8 @@ public interface TicketRepository extends JpaRepository<Ticket,Long> {
             WHERE t.username = :username
             """)
     List<UserTicketsDTO> findSummaryAndDescriptionByUsername(@Param("username") String username);
+
+    @Query(value = "SELECT t.username FROM help_desk_tickets t where email=:email LIMIT 1", nativeQuery = true)
+    Optional<String> findUsernameFromEmail(@Param("email") String email);
 
 }

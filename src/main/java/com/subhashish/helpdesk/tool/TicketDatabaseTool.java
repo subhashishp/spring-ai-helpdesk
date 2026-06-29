@@ -8,8 +8,8 @@ import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
+
 
 @Component
 public class TicketDatabaseTool {
@@ -41,7 +41,7 @@ public class TicketDatabaseTool {
             "tool has been called and returned a result with a ticket ID.")
     public Ticket createTicketTool(
             @ToolParam(description = "Ticket details. Required fields: summary (short title), description (detailed issue), " +
-                    "priority (LOW, MEDIUM, HIGH, or URGENT), " +
+                    "priority (LOW, MEDIUM, HIGH, URGENT) -- STRICT rule - use the exact among these mentioned priorities only, " +
                     "username, email. Do not set status, id, " +
                     "createdOn, " +
                     "or updatedOn — these are handled by the system.")
@@ -95,6 +95,9 @@ public class TicketDatabaseTool {
     """)
     public Ticket getTicketByUserNameTool(@ToolParam(description = "The exact username of the ticket owner, " +
             "e.g. 'john_doe' or 'subhashish123'. Ask the user if not provided.") String username) {
+
+        LOGGER.info("Tool invoked: getTicketByUserNameTool with for user : {}", username);
+
         return ticketService.getTicketByUserName(username);
     }
 
@@ -107,13 +110,58 @@ public class TicketDatabaseTool {
     """)
     public Ticket getTicketByEmailTool(@ToolParam(description = "The exact emailId of the ticket owner, " +
             "e.g. 'john@outlook.com' or 'subh@gmail.com'. Ask the user if not provided.") String email) {
+
+        LOGGER.info("Tool invoked: getTicketByEmailTool with for user : {}", email);
+
         return ticketService.getTicketByEmail(email);
     }
 
 
-    @Tool(description = "This tool helps to update the ticket for the particular user.")
+    @Tool(name = "findAllTicketByEmail",
+    description = """ 
+            ALWAYS call this tool to fetch all tickets belonging to a user when their email address is available. \\
+                Triggered by phrases like 'show my tickets', 'list my tickets', 'what are my tickets', \\
+                'all my issues', 'fetch my tickets' when an email is provided. \\
+                Also call this when the user refers to a ticket without specifying a ticket ID or information about the ticket— \\
+                fetch the full list first so the user can identify which ticket they mean. \\
+                Use this tool ONLY when an email address is available. \\
+                If only a username is provided, use the findAllTicketByUsername tool instead. \\
+                Never answer ticket details from memory.
+            """)
+    public List<Ticket> getListOfTicketsByEmailId(String emailId) {
+
+        LOGGER.info("Tool invoked: getListOfTicketsByEmailId with for email : {}", emailId);
+
+        return ticketService.getListOfTicketsByEmail(emailId);
+    }
+
+    @Tool(
+            name = "updateTicket",
+            description = """
+    ALWAYS call this tool when the user wants to update, modify, change, or edit a ticket — \
+    including updating status, priority, description, or any other ticket field. \
+    Never update a ticket from memory. Must be called before confirming any ticket update.
+    """)
     public Ticket updateTicketTool(@ToolParam(description = "Ticket Details with ticket id.") Ticket ticket) {
+        LOGGER.info("Tool invoked: updateTicketTool with for user : {}", ticket.getEmail());
+
         return ticketService.updateTicket(ticket);
+    }
+
+    @Tool(name = "getExistingUsernameByEmail",
+            description = """
+    ALWAYS call this tool during ticket creation when the username is not provided or the user has forgotten it. \
+    If the user provides an email address, call this tool silently to look up their username from the database \
+    before proceeding with ticket creation. \
+    Do NOT ask the user for their username if an email is available — look it up first using this tool. \
+    If this tool returns null, inform the user: 'I could not find an account with that email. \
+    Please provide your username to proceed.' \
+    Never skip this tool when username is missing and email is present.
+    """)
+    public String getExistingUserNameUsingEmail(@ToolParam(description = "Email address of the user to look up their username. " +
+            "Must be a valid email format e.g. user@example.com") String email) {
+
+        return ticketService.findUserNameByEmail(email);
     }
 
 //

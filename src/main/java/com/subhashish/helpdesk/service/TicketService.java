@@ -30,6 +30,7 @@ public class TicketService {
 
         ticket.setId(null);
         ticket.setStatus(Status.OPEN);
+        LOGGER.info("Priority Set to --------------------------------- {} ",ticket.getPriority());
         return ticketRepository.save(ticket);
     }
 
@@ -37,6 +38,12 @@ public class TicketService {
         LOGGER.info("Finding ticket details using ticketId {}",ticketId);
 
         return ticketRepository.findById(ticketId).orElse(null);
+    }
+
+    public String findUserNameByEmail(String email) {
+        LOGGER.info("Finding username details using emailId {}",email);
+
+        return ticketRepository.findUsernameByEmail(email).orElse(null);
     }
 
     public Ticket getTicketByUserName(String username) {
@@ -48,7 +55,13 @@ public class TicketService {
     public Ticket getTicketByEmail(String email) {
         LOGGER.info("Finding ticket using email {}", email);
 
-        return ticketRepository.findByEmail(email).orElse(null);
+        return ticketRepository.findByEmail(email).stream().findFirst().orElse(null);
+    }
+
+    public List<Ticket> getListOfTicketsByEmail(String email) {
+        LOGGER.info("Finding all ticket of email {}", email);
+
+        return ticketRepository.findByEmail(email);
     }
 
     public Ticket updateTicket(Ticket ticket) {
