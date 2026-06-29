@@ -1,5 +1,7 @@
 package com.subhashish.helpdesk.tool;
 
+import com.subhashish.helpdesk.entity.Priority;
+import com.subhashish.helpdesk.entity.Status;
 import com.subhashish.helpdesk.entity.Ticket;
 import com.subhashish.helpdesk.service.TicketService;
 import org.slf4j.Logger;
@@ -17,6 +19,8 @@ public class TicketDatabaseTool {
     private static final Logger LOGGER = LoggerFactory.getLogger(TicketDatabaseTool.class);
 
     private final TicketService ticketService;
+
+    private static final String DELIMITER = "\u001E";
 
     public TicketDatabaseTool(TicketService ticketService) {
         this.ticketService = ticketService;
@@ -89,6 +93,7 @@ public class TicketDatabaseTool {
     // On the username tool
     @Tool(description = """
     ALWAYS call this tool to fetch ticket details when the user provides or mentions their username. \
+    Or user ask's for the update on his/her ticket using username \
     Triggered by phrases like 'my ticket', 'check my ticket', 'ticket status', 'show my issue' \
     when a username is available. Never answer ticket details from memory. \
     Call this before responding to any ticket lookup request involving a username.
@@ -104,6 +109,7 @@ public class TicketDatabaseTool {
     // On the email tool
     @Tool(description = """
     ALWAYS call this tool to fetch ticket details when the user provides or mentions their email address. \
+    Or user ask's for the update on his/her ticket using emailId \
     Triggered by phrases like 'my ticket', 'check my ticket', 'ticket status', 'show my issue' \
     when an email is available. Never answer ticket details from memory. \
     Call this before responding to any ticket lookup request involving an email.
@@ -135,17 +141,91 @@ public class TicketDatabaseTool {
         return ticketService.getListOfTicketsByEmail(emailId);
     }
 
-    @Tool(
-            name = "updateTicket",
-            description = """
-    ALWAYS call this tool when the user wants to update, modify, change, or edit a ticket — \
-    including updating status, priority, description, or any other ticket field. \
-    Never update a ticket from memory. Must be called before confirming any ticket update.
-    """)
+//    @Tool(
+//            name = "updateTicket",
+//            description = """
+//    ALWAYS call this tool when the user wants to update, modify, change, or edit a ticket — \
+//    including updating status, priority, description, or any other ticket field. \
+//    Never update a ticket from memory. Must be called before confirming any ticket update.
+//    """)
     public Ticket updateTicketTool(@ToolParam(description = "Ticket Details with ticket id.") Ticket ticket) {
         LOGGER.info("Tool invoked: updateTicketTool with for user : {}", ticket.getEmail());
 
         return ticketService.updateTicket(ticket);
+    }
+
+
+    @Tool(
+            name = "updateTicket",
+            description = """
+    Updates an existing support ticket's status, priority, or description.
+    
+    CRITICAL RULES:
+    1. You MUST have the exact numeric Ticket ID. If the user doesn't provide it, DO NOT guess. Ask the user for their email and use the 'findAllTicketByEmail' tool to find the ID first.
+    2. If you are updating the 'status', you MUST also provide a 'description' explaining why the status is being changed. Ask the user for a reason if they didn't provide one.
+    3. Only pass the fields the user explicitly wants to change. Pass null for all other fields.
+    """
+    )
+    public Ticket updateTicketToolV2(
+            @ToolParam(description = "The exact ID of the ticket. (REQUIRED)") Long ticketId,
+            @ToolParam(description = "The new status. MUST be one of: [OPEN, CLOSED, RESOLVED].") String statusString,
+            @ToolParam(description = "The new priority. MUST be one of: [LOW, MEDIUM, HIGH, URGENT]. Pass null if not updating.") String priorityString,
+            @ToolParam(description = "New text to append to the description. Pass null if not updating.") String description
+    ) {
+        LOGGER.info("Took invoked: updateTicketTool with for ticketId : {}", ticketId);
+
+        Ticket ticket = ticketService.getTicket(ticketId);
+        if(ticket == null) {
+            throw new IllegalArgumentException("Ticket not found for ID "+ ticketId);
+        }
+
+        if(statusString != null) {
+            LOGGER.info("STATUS :: Ticket status changing to {}", statusString);
+            if(description != null && !description.trim().isEmpty()) {
+                LOGGER.info("STATUS AND DESCRIPTION :: Ticket status and description updating to {} , {}", statusString,
+                        description);
+                try {
+                    Status status = Status.valueOf(statusString.trim().toUpperCase());
+                    ticket.setStatus(status);
+                } catch (IllegalArgumentException e) {
+                    // Throw a descriptive error! Spring AI will catch this and send it back to the LLM.
+                    throw new IllegalArgumentException("Error: '" + statusString + "' is not a valid status. You must use OPEN, CLOSED, or RESOLVED.");
+                }
+
+                String currentDesc = ticket.getDescription();
+                ticket.setDescription(updateTicketDescription(currentDesc, description));
+
+            } else {
+                throw new IllegalArgumentException("Error: You must provide a description (reason) when updating the ticket status.");
+            }
+        } else if (description != null && !description.trim().isEmpty()) {
+            LOGGER.info("DESCRIPTION :: Ticket description updating to {}", description);
+            ticket.setDescription(updateTicketDescription(ticket.getDescription(), description));
+        }
+
+        if(priorityString != null && !priorityString.trim().isEmpty()) {
+            LOGGER.info("PRIORITY :: Ticket priority updating to {} :", priorityString);
+            try {
+                Priority priority = Priority.valueOf(priorityString.trim().toUpperCase());
+                ticket.setPriority(priority);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Error: '" + priorityString + "' is not a valid priority. You must use [LOW, MEDIUM, HIGH]");
+            }
+        }
+
+        LOGGER.info("UPDATING the ticket of user {} + ticket - {}", ticket.getUsername(), ticket.getSummary());
+        return ticketService.updateTicket(ticket);
+    }
+
+    // this method is used to append the update in the description to create the new description
+    public String updateTicketDescription(String currentDescription,String update){
+
+        if(currentDescription == null)
+            currentDescription = "";
+        else
+            currentDescription += DELIMITER;
+
+        return currentDescription + update;
     }
 
     @Tool(name = "getExistingUsernameByEmail",
