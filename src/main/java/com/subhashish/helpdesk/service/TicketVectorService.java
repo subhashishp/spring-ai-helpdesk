@@ -4,11 +4,13 @@ import com.subhashish.helpdesk.entity.Ticket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class TicketVectorService {
@@ -39,5 +41,29 @@ public class TicketVectorService {
         vectorStore.add(List.of(document));
 
         log.info("Ticket and resolution added to vectorDB");
+    }
+
+    public String searchResolutionInVectorDB(String issue) {
+        log.info("Searching problem for issue in vector DB{} ", issue);
+
+        SearchRequest searchRequest = SearchRequest.builder().query(issue)
+                .topK(3)
+                .similarityThreshold(0.75)
+                .build();
+
+        List<Document> similarDocuments = vectorStore.similaritySearch(searchRequest);
+
+        if (similarDocuments.isEmpty()) {
+            log.info("No Similar historical ticket found for this issue");
+            return "No historical information found related to this issue";
+        }
+
+        String previousInformation = "Earlier/Common resolution of this issue - ";
+
+        previousInformation += similarDocuments.stream()
+                .map(doc -> doc.getFormattedContent()) // Extracts the actual text
+                .collect(Collectors.joining("\n\n---\n\n"));
+
+        return previousInformation;
     }
 }
