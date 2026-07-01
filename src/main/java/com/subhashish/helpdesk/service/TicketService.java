@@ -19,9 +19,11 @@ public class TicketService {
     private static final Logger LOGGER = LoggerFactory.getLogger(TicketService.class);
 
     private final TicketRepository ticketRepository;
+    private final TicketVectorService ticketVectorService;
 
-    public TicketService(TicketRepository ticketRepository) {
+    public TicketService(TicketRepository ticketRepository, TicketVectorService ticketVectorService) {
         this.ticketRepository = ticketRepository;
+        this.ticketVectorService = ticketVectorService;
     }
 
     @Transactional
@@ -32,6 +34,21 @@ public class TicketService {
         ticket.setStatus(Status.OPEN);
         LOGGER.info("Priority Set to --------------------------------- {} ",ticket.getPriority());
         return ticketRepository.save(ticket);
+    }
+
+    public String getSuggestedResolution(String issue) {
+        String historicalContext = ticketVectorService.searchResolutionInVectorDB(issue);
+
+        String systemText = """
+            You are a helpful IT support agent. 
+            Use the following historical ticket resolutions to suggest a fix for the user's new issue.
+            If the historical tickets aren't helpful, just say so and ask user for new ticket for the issue.
+            
+            HISTORICAL TICKETS:
+            {context}
+            """;
+
+        return "";
     }
 
     public Ticket getTicket(Long ticketId) {

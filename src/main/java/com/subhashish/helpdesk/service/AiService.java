@@ -1,5 +1,6 @@
 package com.subhashish.helpdesk.service;
 
+import com.subhashish.helpdesk.entity.Intent;
 import com.subhashish.helpdesk.tool.TicketDatabaseTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,12 +20,32 @@ public class AiService {
     private final ChatClient chatClient;
     private final TicketDatabaseTool ticketDatabaseTool;
 
+    private static final String systemMessageSimpleModel = """
+        You are an expert IT support triage router. Your only job is to analyze the user's message and classify their intent into one of two categories:
+        
+        1. NEW_ISSUE: The user is describing a new problem or reporting a bug.
+        2. EXISTING_TICKET: The user is asking for a status update, adding info, or referring to an already reported problem.
+        """;
+
     @Value("classpath:/helpdesk-system.st")
     private Resource systemPrompt;
 
     public AiService(ChatClient chatClient, TicketDatabaseTool ticketDatabaseTool) {
         this.chatClient = chatClient;
         this.ticketDatabaseTool = ticketDatabaseTool;
+    }
+
+    public Intent  simpleChatAssistant(String query) {
+        try {
+            return this.chatClient
+                    .prompt(query)
+                    .system(systemMessageSimpleModel)
+                    .call()
+                    .entity(Intent.class);
+        } catch (RestClientException e) {
+            log.error("AI service is unavailable: {}", e.getMessage());
+            return Intent.EXISTING_TICKET;
+        }
     }
 
     public String getResponseFromAssistant(String query, String conversationId) {
