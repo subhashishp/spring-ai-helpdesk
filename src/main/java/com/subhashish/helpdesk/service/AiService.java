@@ -19,6 +19,7 @@ public class AiService {
     private static final Logger log = LoggerFactory.getLogger(AiService.class);
     private final ChatClient chatClient;
     private final TicketDatabaseTool ticketDatabaseTool;
+    private final TicketVectorService ticketVectorService;
 
     private static final String systemMessageSimpleModel = """
         You are an expert IT support triage router. Your only job is to analyze the user's message and classify their intent into one of two categories:
@@ -30,12 +31,13 @@ public class AiService {
     @Value("classpath:/helpdesk-system.st")
     private Resource systemPrompt;
 
-    public AiService(ChatClient chatClient, TicketDatabaseTool ticketDatabaseTool) {
+    public AiService(ChatClient chatClient, TicketDatabaseTool ticketDatabaseTool, TicketVectorService ticketVectorService) {
         this.chatClient = chatClient;
         this.ticketDatabaseTool = ticketDatabaseTool;
+        this.ticketVectorService = ticketVectorService;
     }
 
-    public Intent  simpleChatAssistant(String query) {
+    public Intent simpleChatAssistant(String query) {
         try {
             return this.chatClient
                     .prompt(query)
@@ -45,6 +47,23 @@ public class AiService {
         } catch (RestClientException e) {
             log.error("AI service is unavailable: {}", e.getMessage());
             return Intent.EXISTING_TICKET;
+        }
+    }
+
+    public String getAssistantWithRags(String query, String conversationId) {
+        try {
+            String historicalData = ticketVectorService.searchResolutionInVectorDB(query);
+
+            return this.chatClient
+                    .prompt(query)
+                    .system(historicalData)
+                    .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, conversationId))
+                    .call()
+                    .content();
+
+        } catch (RestClientException e) {
+            log.error("AI service is unavailable: {}", e.getMessage());
+            return "I'm having trouble connecting right now. Please try again in a moment.";
         }
     }
 
