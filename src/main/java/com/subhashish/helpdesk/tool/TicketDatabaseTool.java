@@ -161,9 +161,10 @@ public class TicketDatabaseTool {
     Updates an existing support ticket's status, priority, or description.
     
     CRITICAL RULES:
-    1. You MUST have the exact numeric Ticket ID. If the user doesn't provide it, DO NOT guess. Ask the user for their email and use the 'findAllTicketByEmail' tool to find the ID first.
-    2. If you are updating the 'status', you MUST also provide a 'description' explaining why the status is being changed. Ask the user for a reason if they didn't provide one.
-    3. Only pass the fields the user explicitly wants to change. Pass null for all other fields.
+    1. DO NOT use this tool to resolve a ticket. If the user wants to resolve/close a ticket, you MUST use the 'resolveTicket' tool instead.
+    2. You MUST have the exact numeric Ticket ID. If the user doesn't provide it, DO NOT guess. Ask the user for their email and use the 'findAllTicketByEmail' tool to find the ID first.
+    3. If you are updating the 'status', you MUST also provide a 'description' explaining why the status is being changed. Ask the user for a reason if they didn't provide one.
+    4. Only pass the fields the user explicitly wants to change. Pass null for all other fields.
     """
     )
     public Ticket updateTicketToolV2(
@@ -242,6 +243,33 @@ public class TicketDatabaseTool {
             "Must be a valid email format e.g. user@example.com") String email) {
 
         return ticketService.findUserNameByEmail(email);
+    }
+
+    @Tool(
+            name = "resolveTicket",
+            description = """
+    Resolves an existing support ticket.
+    
+    CRITICAL RULES:
+    1. USE THIS TOOL EXCLUSIVELY when a user states a ticket is resolved, fixed, or completed.
+    2. You MUST have the exact numeric Ticket ID. 
+    3. You MUST provide the 'resolution' text explaining how the issue was fixed. If the user doesn't provide the solution steps, ask them for it before calling this tool.
+    """
+    )
+    public Ticket resolveTicketTool(
+            @ToolParam(description = "The exact ID of the ticket. (REQUIRED)") Long ticketId,
+            @ToolParam(description = "The detailed explanation of how the issue was solved. (REQUIRED)") String resolution
+    ) {
+        LOGGER.info("Took invoked: resolving ticketId : {} , resolutionNote : {}", ticketId,resolution);
+
+        Ticket ticket = ticketService.getTicket(ticketId);
+        if(ticket == null) {
+            throw new IllegalArgumentException("Ticket not found for ID "+ ticketId);
+        }
+        if(resolution.isEmpty())
+            throw new IllegalArgumentException("Resolution note is required");
+
+        return ticketService.resolveTicket(ticket,resolution);
     }
 
 //

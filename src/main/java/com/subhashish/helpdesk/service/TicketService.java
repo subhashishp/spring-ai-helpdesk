@@ -21,6 +21,8 @@ public class TicketService {
     private final TicketRepository ticketRepository;
     private final TicketVectorService ticketVectorService;
 
+    private static final String DELIMITER = "\u001E";
+
     public TicketService(TicketRepository ticketRepository, TicketVectorService ticketVectorService) {
         this.ticketRepository = ticketRepository;
         this.ticketVectorService = ticketVectorService;
@@ -36,19 +38,33 @@ public class TicketService {
         return ticketRepository.save(ticket);
     }
 
-    public String getSuggestedResolution(String issue) {
-        String historicalContext = ticketVectorService.searchResolutionInVectorDB(issue);
+//    public String getSuggestedResolution(String issue) {
+//        String historicalContext = ticketVectorService.searchResolutionInVectorDB(issue);
+//
+//        String systemText = """
+//            You are a helpful IT support agent.
+//            Use the following historical ticket resolutions to suggest a fix for the user's new issue.
+//            If the historical tickets aren't helpful, just say so and ask user for new ticket for the issue.
+//
+//            HISTORICAL TICKETS:
+//            {context}
+//            """;
+//
+//        return "";
+//    }
 
-        String systemText = """
-            You are a helpful IT support agent. 
-            Use the following historical ticket resolutions to suggest a fix for the user's new issue.
-            If the historical tickets aren't helpful, just say so and ask user for new ticket for the issue.
-            
-            HISTORICAL TICKETS:
-            {context}
-            """;
+    public Ticket resolveTicket(Ticket ticket, String resolutionNote) {
+        LOGGER.info("Resolving the ticket - ticketId {}",ticket.getId());
 
-        return "";
+        ticketVectorService.addTicketToVectorDB(ticket, resolutionNote);
+        ticket.setDescription(this.updateTicketDescription(ticket.getDescription(), resolutionNote));
+
+        ticket.setStatus(Status.RESOLVED);
+
+        ticketRepository.save(ticket);
+
+        LOGGER.info("TicketId {} -- status {}",ticket.getId(), ticket.getStatus());
+        return ticket;
     }
 
     public Ticket getTicket(Long ticketId) {
@@ -100,4 +116,14 @@ public class TicketService {
             return ticketRepository.findSummaryAndDescriptionByUsername(identifier);
     }
 
+    // this method i called internally for updating description
+    public String updateTicketDescription(String currentDescription,String update){
+
+        if(currentDescription == null)
+            currentDescription = "";
+        else
+            currentDescription += DELIMITER;
+
+        return currentDescription + update;
+    }
 }

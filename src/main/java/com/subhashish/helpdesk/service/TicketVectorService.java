@@ -44,15 +44,16 @@ public class TicketVectorService {
     }
 
     public String searchResolutionInVectorDB(String issue) {
-        log.info("Searching problem for issue in vector DB{} ", issue);
+        log.info("Searching problem for issue in vector DB - {} ", issue);
 
         SearchRequest searchRequest = SearchRequest.builder().query(issue)
                 .topK(3)
-                .similarityThreshold(0.75)
+//                .similarityThreshold(0.75)
                 .build();
 
         List<Document> similarDocuments = vectorStore.similaritySearch(searchRequest);
 
+        log.info("Number of documents found - {}", similarDocuments.size());
         if (similarDocuments.isEmpty()) {
             log.info("No Similar historical ticket found for this issue");
             return "No historical information found related to this issue";
@@ -64,6 +65,7 @@ public class TicketVectorService {
                 .map(doc -> doc.getFormattedContent()) // Extracts the actual text
                 .collect(Collectors.joining("\n\n---\n\n"));
 
+        log.debug("Knowledge -- {}", previousInformation);
         return previousInformation;
     }
 }

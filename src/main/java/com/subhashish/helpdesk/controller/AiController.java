@@ -27,7 +27,7 @@ public class AiController {
                                               @RequestHeader("ConversationId") String conversationid){
         Intent intent = aiService.simpleChatAssistant(query);
         log.info("LLM Router classified query as: {}", intent);
-        if(Intent.NEW_ISSUE.equals(intent)) {
+        if(Intent.TROUBLESHOOTING.equals(intent)) {
             return ResponseEntity.ok(aiService.getAssistantWithRags(query, conversationid));
         }
         else {

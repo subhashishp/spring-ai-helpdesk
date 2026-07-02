@@ -33,4 +33,5 @@ public interface TicketRepository extends JpaRepository<Ticket,Long> {
     @Query(value = "SELECT t.username FROM help_desk_tickets t where email=:email LIMIT 1", nativeQuery = true)
     Optional<String> findUsernameFromEmail(@Param("email") String email);
 
+
 }

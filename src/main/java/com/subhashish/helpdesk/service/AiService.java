@@ -5,6 +5,7 @@ import com.subhashish.helpdesk.tool.TicketDatabaseTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -21,11 +22,27 @@ public class AiService {
     private final TicketDatabaseTool ticketDatabaseTool;
     private final TicketVectorService ticketVectorService;
 
+    private static final String RAG_SYSTEM_MESSAGE = """
+    You are Liza, a polite, professional, and efficient Help Desk Assistant at Substring Technologies Company.
+    Your goal is to help users resolve technical issues using ONLY the provided historical data.
+
+    HISTORICAL DATA:
+    {context}
+    
+    INSTRUCTIONS:
+    1. Analyze the user's issue and check if the HISTORICAL DATA contains a related solution.
+    2. If a relevant solution is found, explain it clearly and politely to the user.
+    3. If the HISTORICAL DATA is NOT related to the user's issue, or does not contain a fix, DO NOT guess, DO NOT use outside knowledge, and DO NOT invent a solution.
+    4. If no solution is found, apologize politely, state that you cannot find a historical fix, and ask the user: "Would you like me to open a new support ticket for this?"
+    """;
+
     private static final String systemMessageSimpleModel = """
         You are an expert IT support triage router. Your only job is to analyze the user's message and classify their intent into one of two categories:
         
-        1. NEW_ISSUE: The user is describing a new problem or reporting a bug.
-        2. EXISTING_TICKET: The user is asking for a status update, adding info, or referring to an already reported problem.
+        1. TROUBLESHOOTING: The user is describing a technical problem, error, or bug that needs to be fixed. 
+        2. TICKET_MANAGEMENT: The user explicitly wants to open a new ticket, check the status of an existing ticket, or update a ticket.
+    
+        Respond ONLY with the classification enum.
         """;
 
     @Value("classpath:/helpdesk-system.st")
@@ -39,14 +56,22 @@ public class AiService {
 
     public Intent simpleChatAssistant(String query) {
         try {
-            return this.chatClient
+            String llmResponse =  this.chatClient
                     .prompt(query)
                     .system(systemMessageSimpleModel)
                     .call()
-                    .entity(Intent.class);
+                    .content();
+            try {
+                assert llmResponse != null;
+                return Intent.valueOf(llmResponse.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.error("LLM returned unexpected intent: {}", llmResponse);
+                // Handle the fallback (e.g., return a default Intent or throw a custom exception)
+                return Intent.TICKET_MANAGEMENT;
+            }
         } catch (RestClientException e) {
             log.error("AI service is unavailable: {}", e.getMessage());
-            return Intent.EXISTING_TICKET;
+            return Intent.TICKET_MANAGEMENT;
         }
     }
 
@@ -54,10 +79,15 @@ public class AiService {
         try {
             String historicalData = ticketVectorService.searchResolutionInVectorDB(query);
 
+            log.info("Historical data received - {}", historicalData);
             return this.chatClient
                     .prompt(query)
-                    .system(historicalData)
-                    .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, conversationId))
+                    .system(promptSystemSpec -> promptSystemSpec
+                            .text(RAG_SYSTEM_MESSAGE)
+                            .param("context", historicalData))
+                    .advisors(advisorSpec -> advisorSpec
+                            .advisors(new SimpleLoggerAdvisor())
+                            .param(ChatMemory.CONVERSATION_ID, conversationId))
                     .call()
                     .content();
 
